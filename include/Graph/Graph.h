@@ -1,223 +1,208 @@
 #pragma once
 #include <iostream>
-#include <deque>
+#include <unordered_set>
 #include <random>
-#include <string>
-#include <list>
+#include <map>
+#include <deque>
 #define LEN_WORD sizeof(size_t) * 8
 #define L 11
 #define A 33333
 
-template<typename Key, typename Value, template<typename...> class Container = std::vector>
-class HashTable {
-	struct Pair {
-		Key key;
-		Value value;
-		friend bool operator==(const Pair& first, const Pair& second) {
-			return first.key == second.key && first.value == second.value;
-		}
-	};
-
-	size_t hash(size_t key) const {
-		size_t tmp = key * A;
-		return ((tmp >> L) | (tmp << LEN_WORD - L));
-	}
-
-	std::vector<Container<Pair>> _data;
-
-	Pair* get_pair(const Key& key){
-		size_t ind = hash(key) % _data.size();
-		for (Pair& p : _data[ind]) {
-			if (p.key == key)
-				return &p;
-		}
-		return nullptr;
-	}
+template<typename Vertex, typename Distance = double>
+class Graph {
 public:
-	HashTable(size_t size) {
-		if (size == 0)
-			throw std::invalid_argument("size = 0?!");
-		_data.resize(size);
-	}
-
-	HashTable(size_t size, int) {
-		if (size == 0)
-			throw std::invalid_argument("size = 0?!");
-		_data.resize(size);
-		for (size_t i = 0; i < size; ++i) {
-			insert(rand(), rand());
+	struct Edge {
+		Vertex from, to;
+		Distance dist;
+		bool operator==(const Edge& e) {
+			if (from == e.from && to == e.to && dist == e.dist)
+				return true;
+			return false;
 		}
 	}
-
-	HashTable(const HashTable& second){
-		_data = second._data;
+private:
+	std::unordered_set<Vertex> _vertices;
+	std::map<Vertex, std::vector<Edge>> _edges; 
+public:
+	//проверка-добавление-удаление вершин
+	bool has_vertex(const Vertex& v) const {
+		return _vertices.find(v);
 	}
 
-	void operator=(const HashTable& second) {
-		_data = second._data;
+	void add_vertex(const Vertex& v) {
+		if (_vertices.find(v) != _vertices.cend())
+			return false;
+		_vertices.insert(v);
+		_edges.insert(v, {});
 	}
 
-	const Pair* find(const Key& key) const{
-		size_t ind = hash(key) % _data.size();
-		for (const Pair& p : _data[ind]) {
-			if (p.key == key)
-				return &p;
+	bool remove_vertex(const Vertex& v) {
+		auto it = _vertices.find(v);
+		if (it == _vertices.cend())
+			return false;
+		_vertices.erace(it);
+		_edges.remove(v);
+		for (const Vertex& from : _vertices) {
+			auto& edges = _edges[from];
+			for (auto it = edges.begin(); it != edges.end(); ++it)
+				if (it->to == vertix) {
+					edges.erace(it);
+					--it;
+				}
 		}
-		return nullptr;
+		return true;
 	}
 
-	void insert(const Key& key, const Value& value) {
-		size_t ind = hash(key) % _data.size();
-		Pair new_pair;
-		new_pair.key = key;
-		new_pair.value = value;
-		_data[ind].push_back(new_pair);
+	std::vector<Vertex> vertices() const {
+		std::vector<T> vector(_vertises.begin(), _vertises.end());
+		return vector;
 	}
 
-	void insert_or_assigned(const Key& key, const Value& value) {
-		Pair* tmp = get_pair(key);
-		if (tmp)
-			tmp->value = value;
-		else {
-			size_t ind = hash(key) % _data.size();
-			Pair new_pair{ key, value };
-			_data[ind].push_back(new_pair);
-		}
+	//проверка-добавление-удаление ребер
+	void add_edge(const Vertex& from, const Vertex& to, const Distance& d) {
+		if (_vertices.find(from) == _vertices.cend())
+			throw std::out_of_range("Unknown from");
+		if (_vertices.find(to) == _vertices.cend())
+			throw std::out_of_range("Unknown to");
+		_edges[from].push_back(Edge{ from,to,d });
 	}
 
-	bool contains(const Value& value) const{
-		for (std::vector<Pair> v : _data) {
-			for (Pair& p : v)
-				if (p.value == value)
-					return true;
-		}
-		return false;
-	}
-
-	bool erase(const Key& key) {
-		size_t v_index = hash(key) % _data.size();
-		for (auto iter = _data[v_index].begin(); iter != _data[v_index].end(); ++iter) {
-			if (iter->key == key) {
-				_data[v_index].erase(iter);
+	bool remove_edge(const Vertex& from, const Vertex& to) {
+		if (_vertices.find(from) == _vertices.cend())
+			throw std::out_of_range("Unknown from");
+		if (_vertices.find(to) == _vertices.cend())
+			throw std::out_of_range("Unknown to");
+		auto& edges = _edges[from];
+		for (const Edge& it : edges) {
+			if (it->from == from && it->to == to) {
+				edges.erace(it);
 				return true;
 			}
 		}
 		return false;
 	}
 
-	bool erase_all_occurences(const Key& key) {
-		bool answer = false;
-		size_t v_index = hash(key) % _data.size();
-		for (auto iter = _data[v_index].begin(); iter != _data[v_index].end(); ++iter) {
-				if (iter->key == key) {
-					_data[v_index].erase(iter);
-					answer = true;
+	bool remove_edge(const Edge& e) { //c учетом расстояния
+		if (_vertices.find(e.from) == _vertices.cend())
+			throw std::out_of_range("Unknown from");
+		if (_vertices.find(e.to) == _vertices.cend())
+			throw std::out_of_range("Unknown to");
+		auto& edges = _edges[e.from];
+		for (const Edge& it : edges) {
+			if (*it == e) {
+				edges.erace(it);
+				return true;
+			}
+		}
+		return false;
+	}
+
+	bool has_edge(const Vertex& from, const Vertex& to) const {
+		if (_vertices.find(from) == _vertices.cend())
+			throw std::out_of_range("Unknown from");
+		if (_vertices.find(to) == _vertices.cend())
+			throw std::out_of_range("Unknown to");
+		auto& edges = _edges[from];
+		for (const Edge& it : edges) {
+			if (it->from == from && it->to == to) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	bool has_edge(const Edge& e) { //c учетом расстояния в Edge
+		if (_vertices.find(from) == _vertices.cend())
+			throw std::out_of_range("Unknown from");
+		if (_vertices.find(to) == _vertices.cend())
+			throw std::out_of_range("Unknown to");
+		auto& edges = _edges[from];
+		for (const Edge& it : edges) {
+			if (*it == e) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	//получение всех ребер, выходящих из вершины
+	std::vector<Edge> edges(const Vertex& vertex) {
+		if(_vertices.find(vertex) == _vertices.cend())
+			throw std::out_of_range("Unknown vertex");
+		return _edges[from];
+	}
+
+	size_t order() const { //порядок
+		return _vertices.size();
+	}
+
+	size_t degree(const Vertex& v) const {//степень вершины
+		if (_vertices.find(vertex) == _vertices.cend())
+			throw std::out_of_range("Unknown vertex");
+		auto& edges_of_v = _edges[v.from];
+		size_t counter = edges_of_v.cend() - edges_of_v.cbegin();
+		for (const auto& vector : _edges) {
+			if (edges_of_v == vector)
+				continue;
+			for (const Edge& it : vector) {
+				if (it->to == v.to)
+					++counter;
+			}
+		}
+		return counter;
+	}
+
+	//поиск кратчайшего пути
+	std::vector<Edge> shortest_path(const Vertex& from, const Vertex& to) const {
+		if (_vertices.find(vertex) == _vertices.cend())
+			throw std::out_of_range("Unknown vertex");
+		std::map<Vertex, Distance> distances;
+		size_t i = 0;
+		for (const Vertex& v : _vertices) {
+			if (v == from)
+				continue;
+			distances[v] = std::numeric_limits<Distance>::max();
+		}
+		std::deque<Vertex> deq;
+		std::unordered_set<Vertex> history;
+		deq.push_back(from);
+		history.insert(from);
+		while (!deq.empty()) {
+			auto& edges = _edges[deq.front()];
+			for (const auto& it : edges) {
+				distances[it->to] = std::min(distances[it->to], distances[it.from] + it.dist);
+				if (it->to in history)
+					deq.push_front(it->to);
+				else {
+					deq.push_back(it->to);
+					history.insert(it->to);
 				}
+			}
+			deq.pop_front();
 		}
-		return answer;
-	}
-
-	size_t count(const Key& key) const{
-		size_t ans = 0;
-		for (std::vector<Pair> v : _data)
-			for (const Pair& p : v)
-				if (p.key == key)
-					++ans;
-		return ans;
-	}
-
-	void resize(size_t size) {
-		if (size == 0) {
-			_data.clear();
-			return;
-		}
-		std::vector<Container<Pair>> history_data = _data;
-		_data.clear();
-		_data.resize(size);
-		for (auto& v : history_data) {
-			for (auto& p : v) {
-				size_t ind = hash(p.key) % _data.size();
-				_data[ind].push_back(p);
+		std::deque<Edge> answer;
+		deq.push_front(to);
+		while (deq.front() != from) {
+			bool exit = false;
+			for (const Vertex & v : _vertices) {
+				if (v == to)
+					continue;
+				const auto& edges = _edges[v];
+				for (const Edge& it : edges) {
+					if (it->to == deq.front() && distances[it->to] - it->dist == distance[it->from]) {
+						answer.push_front(*it);
+						deq.push_front(it->from);
+						exit = true;
+						break;
+					}
+				}
+				if (exit) {
+					break;
+				}
 			}
 		}
 	}
-
-	friend bool operator==(const HashTable& first, const HashTable& second){
-		size_t v_index = 0;
-		if (first._data.size() != second._data.size())
-			return false;
-		for (Container<Pair> v : first._data) {
-			if (v.size() != second._data[v_index].size())
-				return false;
-			size_t p_ind = 0;
-			for (const Pair& p : v) {
-				auto appropriate = second._data[v_index].begin();
-				std::advance(appropriate, p_ind);
-				if ( p != *appropriate)
-					return false;
-				++p_ind;
-			}
-			++v_index;
-		}
-		return true;
-	}
-
-	friend std::ostream& operator << (std::ostream& os, const Pair* pair) {
-		Key a = pair->key;
-		Value b = pair->value;
-		if (pair) {
-			os << "key= " << a << ", value= " << b << std::endl;
-		}
-		else
-			os << "Pair is empty!" << std::endl;
-		return os;
-	}
-
-	friend std::ostream& operator<<(std::ostream& os, const HashTable& table) {
-		os << "Hash Table(size= " << table._data.size() << "):" << std::endl;
-		for (Container<Pair> v : table._data) {
-			size_t k = 1;
-			for (const Pair& p : v) {
-				for (int i = 0; i < k; ++i)
-					os << "\t";
-				os << "key= " << p.key << ", value= " << p.value << " hash= " << table.hash(p.key) << std::endl;
-				k += 1;
-			}
-		}
-		return os;
-	}
+	//обход
+	std::vector<Vertex>  walk(const Vertex& start_vertex)const;
 };
 
-
-size_t hash_roman_to_arabish(const char& c) {
-	switch (c) {
-	case 'I': return 1;
-	case 'V': return 5;
-	case 'X': return 10;
-	case 'L': return 50;
-	case 'C': return 100;
-	case 'D': return 500;
-	case 'M': return 1000;
-	default:
-		throw std::invalid_argument("Сan't convert your number from Roman to Arabic");
-	}
-}
-
-
-size_t roman_to_arabish(const std::string& key) {
-	HashTable<char, size_t, std::deque> values(key.size());
-	for (char c : key) {
-		values.insert(c, hash_roman_to_arabish(c));
-	}
-	size_t answer = 0;
-	size_t previous = 0;
-	for (size_t i = key.size(); i > 0; --i) {
-		size_t in_arabish = values.find(key[i - 1])->value;
-		if (in_arabish >= previous)
-			answer += in_arabish;
-		else
-			answer -= in_arabish;
-		previous = in_arabish;
-	}
-	return answer;
-}
