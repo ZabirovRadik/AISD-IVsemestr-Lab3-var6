@@ -4,6 +4,7 @@
 #include <random>
 #include <map>
 #include <deque>
+#include <functional>
 #define LEN_WORD sizeof(size_t) * 8
 #define L 11
 #define A 33333
@@ -14,7 +15,7 @@ public:
 	struct Edge {
 		Vertex from, to;
 		Distance dist;
-		bool operator==(const Edge& e) {
+		bool operator==(const Edge& e) const{
 			if (from == e.from && to == e.to && dist == e.dist)
 				return true;
 			return false;
@@ -23,6 +24,7 @@ public:
 private:
 	std::unordered_set<Vertex> _vertices;
 	std::map<Vertex, std::vector<Edge>> _edges; 
+	static std::vector<Vertex> for_a_walk;
 public:
 	//проверка-добавление-удаление вершин
 	bool has_vertex(const Vertex& v) const {
@@ -53,8 +55,8 @@ public:
 		return true;
 	}
 
-	std::vector<Vertex> vertices() const {
-		std::vector<T> vector(_vertises.begin(), _vertises.end());
+	const std::vector<Vertex>& vertices() const {
+		std::vector<Vertex> vector(_vertises.begin(), _vertises.end());
 		return vector;
 	}
 
@@ -111,7 +113,7 @@ public:
 		return false;
 	}
 
-	bool has_edge(const Edge& e) { //c учетом расстояния в Edge
+	bool has_edge(const Edge& e) const{ //c учетом расстояния в Edge
 		if (_vertices.find(from) == _vertices.cend())
 			throw std::out_of_range("Unknown from");
 		if (_vertices.find(to) == _vertices.cend())
@@ -126,7 +128,7 @@ public:
 	}
 
 	//получение всех ребер, выходящих из вершины
-	std::vector<Edge> edges(const Vertex& vertex) {
+	const std::vector<Edge>& edges(const Vertex& vertex) const{
 		if(_vertices.find(vertex) == _vertices.cend())
 			throw std::out_of_range("Unknown vertex");
 		return _edges[from];
@@ -152,8 +154,7 @@ public:
 		return counter;
 	}
 
-	//поиск кратчайшего пути
-	std::vector<Edge> shortest_path(const Vertex& from, const Vertex& to) const {
+	const std::map<Vertex, Distance>& get_distances(const Vertex& from) {
 		if (_vertices.find(vertex) == _vertices.cend())
 			throw std::out_of_range("Unknown vertex");
 		std::map<Vertex, Distance> distances;
@@ -180,6 +181,13 @@ public:
 			}
 			deq.pop_front();
 		}
+		return distances;
+	}
+
+	//поиск кратчайшего пути
+	const std::vector<Edge>& shortest_path(const Vertex& from, const Vertex& to) const {
+		std::map<Vertex, Distance> distances = get_distances(from);
+		std::deque<Vertex> deq;
 		std::deque<Edge> answer;
 		deq.push_front(to);
 		while (deq.front() != from) {
@@ -201,8 +209,103 @@ public:
 				}
 			}
 		}
+		std::vector<Edge> vector(answer.end(), answer.begin());
+		return vector;
 	}
+
+	Distance get_longest_distance(const std::map<Vertex, Distance>& distances) {
+		Distance answer = std::numeric_limits<Distance>::min();
+		for (const auto& [_, distance] : distances) {
+			if (distance > answer)
+				answer = distance;
+		}
+		return answer;
+	}
+
 	//обход
-	std::vector<Vertex>  walk(const Vertex& start_vertex)const;
+	void walk(const Vertex& start_vertex, std::function<void(const Vertex&)> action) {
+		std::map<Vertex, bool> marks;
+		for (const Vertex& v : _vertices) {
+			marks[v] = false;
+		}
+		std::deque<Vertex> order_immersion;
+		order_immersion.push_front(start_vertex);
+		while (!order_immersion.empty()) {
+			auto& front_elem = order_immersion.front();
+			if (marks[front_elem]) {
+				order_immersion.pop_front();
+				continue;
+			}
+			action(front_elem);
+			marks[front_elem] = true;
+			const auto& edges = _edges[front_elem];
+			for (auto& it : _edges) {
+				if (!marks[it->to])
+					order_immersion.push_front(it->to);
+			}
+			order_immersion.pop_front();
+		}
+	}
+
+	void walk(const Vertex& start_vertex, std::function<void(const Vertex&)> action) const{
+		std::map<Vertex, bool> marks;
+		for (const Vertex& v : _vertices) {
+			marks[v] = false;
+		}
+		std::deque<Vertex> order_immersion;
+		order_immersion.push_front(start_vertex);
+		while (!order_immersion.empty()) {
+			auto& front_elem = order_immersion.front();
+			if (marks[front_elem]) {
+				order_immersion.pop_front();
+				continue;
+			}
+			action(front_elem);
+			marks[front_elem] = true;
+			const auto& edges = _edges[front_elem];
+			for (auto& it : _edges) {
+				if (!marks[it->to])
+					order_immersion.push_front(it->to);
+			}
+			order_immersion.pop_front();
+		}
+	}
+
+	void print_vertex(const Vertex& v) const {
+		std::cout << v << " ";
+	}
+
+	void print(const Vertex& start_vertex) const{
+		std::cout << "Your graph when traversing in depth:" << std::endl;
+		walk(start_vertex, print_vertex);
+	}
+
+	void push_to_static_vector(const Vertex& v) {
+		for_a_walk.push_back(v);
+	}
+
+	const std::vector<Vertex>& print(const Vertex& start_vertex) const {
+		walk(start_vertex, push_to_static_vector);
+		return for_a_walk;
+	}
 };
 
+
+template<typename Vertex, typename Distance = double>
+const Vertex& get_center(const Graph<Vertex, Distance>& graph) {
+	std::vector<Vertex> vertices = graph.vertices();
+	Vertex center;
+	Distance best_of_worst = std::numeric_limits<Distance>::max();
+	for (const auto& v : vertices) {
+		Distance max_dist = std::numeric_limits<Distance>::min();
+		for (const auto& [_, distance] : graph.get_distances(v)) {
+			if (distance > answer)
+				max_dist = distance;
+		}
+		if (max_dist < best_of_worst) {
+			best_of_worst = max_dist;
+			center = v;
+		}
+	}
+	return center;
+}
