@@ -15,48 +15,54 @@ public:
 	struct Edge {
 		Vertex from, to;
 		Distance dist;
-		bool operator==(const Edge& e) const{
+		bool operator==(const Edge& e) const {
 			if (from == e.from && to == e.to && dist == e.dist)
 				return true;
 			return false;
 		}
-	}
+	};
 private:
 	std::unordered_set<Vertex> _vertices;
-	std::map<Vertex, std::vector<Edge>> _edges; 
-	static std::vector<Vertex> for_a_walk;
+	std::map<Vertex, std::vector<Edge>> _edges;
+	std::vector<Vertex> for_a_walk;
 public:
+	
+
 	//проверка-добавление-удаление вершин
 	bool has_vertex(const Vertex& v) const {
-		return _vertices.find(v);
+		return _vertices.find(v) != _vertices.end();
 	}
 
 	void add_vertex(const Vertex& v) {
 		if (_vertices.find(v) != _vertices.cend())
-			return false;
+			return;
 		_vertices.insert(v);
-		_edges.insert(v, {});
+		_edges.emplace(v, std::vector<Edge>{});
 	}
 
 	bool remove_vertex(const Vertex& v) {
 		auto it = _vertices.find(v);
 		if (it == _vertices.cend())
 			return false;
-		_vertices.erace(it);
-		_edges.remove(v);
+		_vertices.erase(it);
+		_edges.erase(v);
 		for (const Vertex& from : _vertices) {
 			auto& edges = _edges[from];
 			for (auto it = edges.begin(); it != edges.end(); ++it)
-				if (it->to == vertix) {
-					edges.erace(it);
+				if (it->to == v) {
+					edges.erase(it);
 					--it;
 				}
 		}
 		return true;
 	}
 
-	const std::vector<Vertex>& vertices() const {
-		std::vector<Vertex> vector(_vertises.begin(), _vertises.end());
+	const std::unordered_set<Vertex>& vertices() const {
+		return _vertices;
+	}
+
+	std::vector<Vertex> vector_of_vertices() const {
+		std::vector<Vertex> vector(_vertices.begin(), _vertices.end());
 		return vector;
 	}
 
@@ -75,9 +81,9 @@ public:
 		if (_vertices.find(to) == _vertices.cend())
 			throw std::out_of_range("Unknown to");
 		auto& edges = _edges[from];
-		for (const Edge& it : edges) {
-			if (it->from == from && it->to == to) {
-				edges.erace(it);
+		for (size_t i = 0; i < edges.size(); ++i) {
+			if (edges[i].from == from && edges[i].to == to) {
+				edges.erase(edges.begin() + i);
 				return true;
 			}
 		}
@@ -90,9 +96,9 @@ public:
 		if (_vertices.find(e.to) == _vertices.cend())
 			throw std::out_of_range("Unknown to");
 		auto& edges = _edges[e.from];
-		for (const Edge& it : edges) {
-			if (*it == e) {
-				edges.erace(it);
+		for (size_t i = 0; i < edges.size(); ++i) {
+			if (edges[i] == e) {
+				edges.erase(edges.begin() + i);
 				return true;
 			}
 		}
@@ -104,9 +110,10 @@ public:
 			throw std::out_of_range("Unknown from");
 		if (_vertices.find(to) == _vertices.cend())
 			throw std::out_of_range("Unknown to");
-		auto& edges = _edges[from];
+		auto iter_on_elem = _edges.find(from);
+		auto& edges = iter_on_elem->second;
 		for (const Edge& it : edges) {
-			if (it->from == from && it->to == to) {
+			if (it.from == from && it.to == to) {
 				return true;
 			}
 		}
@@ -114,13 +121,14 @@ public:
 	}
 
 	bool has_edge(const Edge& e) const{ //c учетом расстояния в Edge
-		if (_vertices.find(from) == _vertices.cend())
+		if (_vertices.find(e.from) == _vertices.cend())
 			throw std::out_of_range("Unknown from");
-		if (_vertices.find(to) == _vertices.cend())
+		if (_vertices.find(e.to) == _vertices.cend())
 			throw std::out_of_range("Unknown to");
-		auto& edges = _edges[from];
+		auto iter_on_elem = _edges.find(e.from);
+		auto& edges = iter_on_elem->second;
 		for (const Edge& it : edges) {
-			if (*it == e) {
+			if (it == e) {
 				return true;
 			}
 		}
@@ -131,61 +139,59 @@ public:
 	const std::vector<Edge>& edges(const Vertex& vertex) const{
 		if(_vertices.find(vertex) == _vertices.cend())
 			throw std::out_of_range("Unknown vertex");
-		return _edges[from];
+		auto iter_on_elem = _edges.find(vertex);
+		return iter_on_elem->second;
 	}
 
-	size_t order() const { //порядок
+	size_t order() const { //порядок графа
 		return _vertices.size();
 	}
 
 	size_t degree(const Vertex& v) const {//степень вершины
-		if (_vertices.find(vertex) == _vertices.cend())
+		if (_vertices.find(v) == _vertices.cend())
 			throw std::out_of_range("Unknown vertex");
-		auto& edges_of_v = _edges[v.from];
-		size_t counter = edges_of_v.cend() - edges_of_v.cbegin();
-		for (const auto& vector : _edges) {
-			if (edges_of_v == vector)
+		auto iter_on_elem = _edges.find(v);
+		auto& edges_of_v = iter_on_elem->second;
+		size_t counter = edges_of_v.size();
+		for (const auto& [ _, edges ] : _edges) {
+			if (edges_of_v == edges)
 				continue;
-			for (const Edge& it : vector) {
-				if (it->to == v.to)
+			for (const Edge& it : edges) {
+				if (it.to == v)
 					++counter;
 			}
 		}
 		return counter;
 	}
 
-	const std::map<Vertex, Distance>& get_distances(const Vertex& from) {
-		if (_vertices.find(vertex) == _vertices.cend())
+	std::map<Vertex, Distance> get_distances(const Vertex& from) const{
+		if (_vertices.find(from) == _vertices.cend())
 			throw std::out_of_range("Unknown vertex");
 		std::map<Vertex, Distance> distances;
 		size_t i = 0;
 		for (const Vertex& v : _vertices) {
-			if (v == from)
-				continue;
 			distances[v] = std::numeric_limits<Distance>::max();
 		}
-		std::deque<Vertex> deq;
-		std::unordered_set<Vertex> history;
-		deq.push_back(from);
-		history.insert(from);
-		while (!deq.empty()) {
-			auto& edges = _edges[deq.front()];
-			for (const auto& it : edges) {
-				distances[it->to] = std::min(distances[it->to], distances[it.from] + it.dist);
-				if (it->to in history)
-					deq.push_front(it->to);
-				else {
-					deq.push_back(it->to);
-					history.insert(it->to);
-				}
+		distances[from] = 0;
+		for (std::size_t i = 0; i < _vertices.size() - 1; ++i) {
+			for (const auto& [ _,edges ] : _edges) {
+				for(const auto& edge: edges)
+					if (distances[edge.from] < distances[edge.to] - edge.dist) {
+						distances[edge.to] = distances[edge.from] + edge.dist;
+					}
 			}
-			deq.pop_front();
+		}
+		for (const auto& [_, edges] : _edges) {
+			for (const auto& edge : edges)
+				if (distances[edge.from] < distances[edge.to] - edge.dist) {
+					std::cout << "Graph contains negative cycle" << std::endl;
+				}
 		}
 		return distances;
 	}
 
 	//поиск кратчайшего пути
-	const std::vector<Edge>& shortest_path(const Vertex& from, const Vertex& to) const {
+	std::vector<Edge> shortest_path(const Vertex& from, const Vertex& to) const {
 		std::map<Vertex, Distance> distances = get_distances(from);
 		std::deque<Vertex> deq;
 		std::deque<Edge> answer;
@@ -195,11 +201,12 @@ public:
 			for (const Vertex & v : _vertices) {
 				if (v == to)
 					continue;
-				const auto& edges = _edges[v];
+				auto iter_on_elem = _edges.find(v);
+				const auto& edges = iter_on_elem->second;
 				for (const Edge& it : edges) {
-					if (it->to == deq.front() && distances[it->to] - it->dist == distance[it->from]) {
-						answer.push_front(*it);
-						deq.push_front(it->from);
+					if (it.to == deq.front() && distances[it.to] - it.dist == distances[it.from]) {
+						answer.push_front(it);
+						deq.push_front(it.from);
 						exit = true;
 						break;
 					}
@@ -209,7 +216,7 @@ public:
 				}
 			}
 		}
-		std::vector<Edge> vector(answer.end(), answer.begin());
+		std::vector<Edge> vector(answer.begin(), answer.end());
 		return vector;
 	}
 
@@ -238,12 +245,13 @@ public:
 			}
 			action(front_elem);
 			marks[front_elem] = true;
-			const auto& edges = _edges[front_elem];
-			for (auto& it : _edges) {
-				if (!marks[it->to])
-					order_immersion.push_front(it->to);
-			}
 			order_immersion.pop_front();
+			auto iter_on_elem = _edges.find(front_elem);
+			if (iter_on_elem != _edges.cend())
+				for (auto& it : iter_on_elem->second) {
+					if (!marks[it.to])
+						order_immersion.push_front(it.to);
+				}
 		}
 	}
 
@@ -262,12 +270,13 @@ public:
 			}
 			action(front_elem);
 			marks[front_elem] = true;
-			const auto& edges = _edges[front_elem];
-			for (auto& it : _edges) {
-				if (!marks[it->to])
-					order_immersion.push_front(it->to);
-			}
 			order_immersion.pop_front();
+			auto iter_on_elem = _edges.find(front_elem);
+			if (iter_on_elem != _edges.cend()) 
+				for (auto& it : iter_on_elem->second) {
+					if (!marks[it.to])
+						order_immersion.push_front(it.to);
+				}
 		}
 	}
 
@@ -277,15 +286,18 @@ public:
 
 	void print(const Vertex& start_vertex) const{
 		std::cout << "Your graph when traversing in depth:" << std::endl;
-		walk(start_vertex, print_vertex);
+		std::function<void(const Vertex&)> action = [this](const Vertex& v) { print_vertex(v); };
+		walk(start_vertex, action);
 	}
 
 	void push_to_static_vector(const Vertex& v) {
 		for_a_walk.push_back(v);
 	}
 
-	const std::vector<Vertex>& print(const Vertex& start_vertex) const {
-		walk(start_vertex, push_to_static_vector);
+	const std::vector<Vertex>& graph_to_vector(const Vertex& start_vertex) {
+		std::function<void(const Vertex&)> action = [this](const Vertex& v) { push_to_static_vector(v); };
+		for_a_walk.clear();
+		walk(start_vertex, action);
 		return for_a_walk;
 	}
 };
@@ -293,13 +305,15 @@ public:
 
 template<typename Vertex, typename Distance = double>
 const Vertex& get_center(const Graph<Vertex, Distance>& graph) {
-	std::vector<Vertex> vertices = graph.vertices();
+	std::unordered_set<Vertex> vertices = graph.vertices();
+	if (vertices.size() == 0)
+		throw std::out_of_range("graph without vertices");
 	Vertex center;
 	Distance best_of_worst = std::numeric_limits<Distance>::max();
 	for (const auto& v : vertices) {
 		Distance max_dist = std::numeric_limits<Distance>::min();
-		for (const auto& [_, distance] : graph.get_distances(v)) {
-			if (distance > answer)
+		for (const auto [_, distance] : graph.get_distances(v)) {
+			if (distance > max_dist)
 				max_dist = distance;
 		}
 		if (max_dist < best_of_worst) {
