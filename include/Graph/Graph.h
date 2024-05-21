@@ -280,25 +280,14 @@ public:
 		}
 	}
 
-	void print_vertex(const Vertex& v) const {
-		std::cout << v << " ";
-	}
-
 	void print(const Vertex& start_vertex) const{
 		std::cout << "Your graph when traversing in depth:" << std::endl;
-		std::function<void(const Vertex&)> action = [this](const Vertex& v) { print_vertex(v); };
-		walk(start_vertex, action);
+		walk(start_vertex, [](const Vertex& v) { std::cout << v << " "; });
 	}
 
-	void push_to_static_vector(const Vertex& v) {
-		for_a_walk.push_back(v);
-	}
-
-	const std::vector<Vertex>& graph_to_vector(const Vertex& start_vertex) {
-		std::function<void(const Vertex&)> action = [this](const Vertex& v) { push_to_static_vector(v); };
-		for_a_walk.clear();
-		walk(start_vertex, action);
-		return for_a_walk;
+	void graph_to_vector(const Vertex& start_vertex, std::vector<Vertex>& answer) {
+		answer.clear();
+		walk(start_vertex, [&answer](const Vertex& v) { answer.push_back(v); });
 	}
 };
 

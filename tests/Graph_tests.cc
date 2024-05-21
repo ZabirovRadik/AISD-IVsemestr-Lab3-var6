@@ -96,6 +96,7 @@ TEST(GRAPH_TASK, FromHomeworkGraphTheory) {
 	graph.remove_edge(e);
 	EXPECT_FALSE(graph.has_edge(3,2));
 	graph.remove_vertex(1);
+	
 	std::cout << "\n\nAfter remove vertex 1:" << std::endl;
 	for (int v = 2; v < 7; ++v) {
 		std::cout << "\nFrom " << v << std::endl;
@@ -103,4 +104,11 @@ TEST(GRAPH_TASK, FromHomeworkGraphTheory) {
 			std::cout << dist << " " << std::endl;
 		}
 	}
+	std::cout << "\n Try print from 3" << std::endl;
+	graph.print(3);
+	std::cout << "\n Vector walk from 4" << std::endl;
+	std::vector<int> answer;
+	graph.graph_to_vector(4, answer);
+	for (auto& it : answer)
+		std::cout << it << " ";
 }
